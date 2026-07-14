@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-100 text-slate-800">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mecanizar PRO v5.0 - Seletor Avançado de Pontas & Gotas</title>
+    
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mecanizar: {
+                            50: '#f0fdf4', 100: '#dcfce7', 500: '#16a34a', 600: '#15803d', 700: '#166534', 900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .laudo-desktop-view { width: 794px !important; min-width: 794px !important; background: white !important; margin: 0 auto !important; }
+        @media print {
+            @page { size: portrait; margin: 0mm !important; }
+            html, body { height: auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .no-print { display: none !important; }
+            #section-relatorio { display: block !important; width: 794px !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
+            .step-indicator { display: none !important; }
+            #section-config, #section-vazao, #section-simulacao { display: none !important; }
+            .print-full-width { width: 794px !important; height: 1123px !important; padding: 40px 45px !important; box-sizing: border-box !important; background: #fff !important; box-shadow: none !important; border: none !important; page-break-inside: avoid !important; }
+            .chart-print-block { height: 230px !important; width: 704px !important; position: relative !important; }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col overflow-hidden bg-slate-100">
+
+    <header class="bg-slate-900 text-white shadow-md z-30 shrink-0 no-print pt-[env(safe-area-inset-top,0px)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 bg-mecanizar-500 rounded-xl flex items-center justify-center text-white shadow-md">
+                    <i data-lucide="droplet" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-mecanizar-500 bg-clip-text text-transparent">Mecanizar PRO</span>
+                    <span class="block text-[10px] text-slate-400 tracking-widest uppercase font-semibold">Tecnologia de Aplicação v5.0</span>
+                </div>
+            </div>
+            <div class="text-xs text-slate-400 font-medium bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                Engenharia de Pulverização
+            </div>
+        </div>
+    </header>
+
+    <div class="bg-white border-b border-slate-200 py-4 shadow-sm shrink-0 no-print step-indicator">
+        <div class="max-w-4xl mx-auto px-4 flex items-center justify-between">
+            <div id="step-btn-1" class="flex items-center gap-2 font-bold text-xs text-mecanizar-600">
+                <span class="w-6 h-6 rounded-full bg-mecanizar-100 flex items-center justify-center border border-mecanizar-500">1</span> Configurações
+            </div>
+            <div class="w-12 h-[2px] bg-slate-200" id="line-step-1"></div>
+            <div id="step-btn-2" class="flex items-center gap-2 font-semibold text-xs text-slate-400">
+                <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">2</span> Vazão Alvo
+            </div>
+            <div class="w-12 h-[2px] bg-slate-200" id="line-step-2"></div>
+            <div id="step-btn-3" class="flex items-center gap-2 font-semibold text-xs text-slate-400">
+                <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">3</span> Simulação do Bico
+            </div>
+            <div class="w-12 h-[2px] bg-slate-200" id="line-step-3"></div>
+            <div id="step-btn-4" class="flex items-center gap-2 font-semibold text-xs text-slate-400">
+                <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">4</span> Laudo Técnico
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-1 overflow-y-auto p-4 sm:p-8 max-w-7xl mx-auto w-full pb-[env(safe-area-inset-bottom,16px)]">
+
+        <section id="section-config" class="space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6 max-w-3xl mx-auto">
+                <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+                    <i data-lucide="sliders" class="w-5 h-5 text-mecanizar-600"></i>
+                    <h2 class="text-lg font-extrabold text-slate-900">1. Parâmetros Operacionais & Gotas Toleráveis</h2>
+                </div>
+                
+                <form onsubmit="avancarParaVazao(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Taxa de Aplicação Alvo (L/ha)</label>
+                            <input type="number" id="input-taxa" value="100" min="1" class="w-full bg-slate-50 border border-slate-200 focus:border-mecanizar-500 focus:ring-1 focus:ring-mecanizar-500 rounded-xl px-4 py-3 font-semibold text-slate-800 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Espaçamento entre Bicos (m)</label>
+                            <input type="number" id="input-espacamento" value="0.50" min="0.1" step="0.05" class="w-full bg-slate-50 border border-slate-200 focus:border-mecanizar-500 focus:ring-1 focus:ring-mecanizar-500 rounded-xl px-4 py-3 font-semibold text-slate-800 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Velocidade Mínima (km/h)</label>
+                            <input type="number" id="input-vel-min" value="8.0" min="0.5" step="0.1" class="w-full bg-slate-50 border border-slate-200 focus:border-mecanizar-500 focus:ring-1 focus:ring-mecanizar-500 rounded-xl px-4 py-3 font-semibold text-slate-800 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Velocidade Máxima (km/h)</label>
+                            <input type="number" id="input-vel-max" value="14.0" min="0.5" step="0.1" class="w-full bg-slate-50 border border-slate-200 focus:border-mecanizar-500 focus:ring-1 focus:ring-mecanizar-500 rounded-xl px-4 py-3 font-semibold text-slate-800 transition">
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <label class="block text-xs font-bold uppercase text-slate-500">Espectro de Gotas Tolerável (Aceitável)</label>
+                        <p class="text-xs text-slate-400">O sistema monitora se a ponta escolhida sai do espectro marcado durante a variação de velocidade.</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="gotas-toleradas-container">
+                            </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t border-slate-100">
+                        <button type="submit" class="w-full sm:w-auto bg-mecanizar-600 hover:bg-mecanizar-500 text-white font-bold text-sm px-8 py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition">
+                            <span>Calcular Vazão Requerida</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section id="section-vazao" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-3xl mx-auto space-y-6">
+                <div class="flex items-center gap-2 pb-3 border-b border-slate-100">
+                    <i data-lucide="calculator" class="w-5 h-5 text-mecanizar-600"></i>
+                    <h2 class="text-lg font-extrabold text-slate-900">2. Faixa de Vazão Requerida Calculada</h2>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm text-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Vazão Mínima do Bico</span>
+                        <h3 id="vazao-req-min" class="text-3xl font-black text-slate-900 font-mono">-- L/min</h3>
+                        <p class="text-[10px] text-slate-400 mt-2">Necessária para a velocidade de <span id="vazao-req-lbl-min">--</span> km/h</p>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm text-center">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Vazão Máxima do Bico</span>
+                        <h3 id="vazao-req-max" class="text-3xl font-black text-slate-900 font-mono">-- L/min</h3>
+                        <p class="text-[10px] text-slate-400 mt-2">Necessária para a velocidade de <span id="vazao-req-lbl-max">--</span> km/h</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Espectro de Gotas Configurado para Filtro:</span>
+                    <div class="flex flex-wrap gap-2" id="resumo-gotas-selecionadas">
+                        </div>
+                </div>
+
+                <div class="p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-950 text-xs flex gap-3">
+                    <i data-lucide="info" class="w-5 h-5 text-emerald-600 shrink-0"></i>
+                    <div>
+                        <strong class="font-bold block mb-1">Diretriz Agronômica de Seleção:</strong>
+                        A ponta escolhida no próximo passo deve conseguir suprir estas vazões sem extrapolar as pressões mínimas e máximas de bula do fabricante.
+                    </div>
+                </div>
+
+                <div class="flex justify-between pt-4 border-t border-slate-100">
+                    <button onclick="switchSection('section-config', 1)" class="border border-slate-200 text-slate-600 font-bold text-xs px-5 py-3 rounded-xl hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Ajustar Parâmetros
+                    </button>
+                    <button onclick="avancarParaSimulador()" class="bg-mecanizar-600 hover:bg-mecanizar-500 text-white font-bold text-sm px-8 py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition">
+                        <span>Avançar para Seleção do Bico</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-simulacao" class="hidden space-y-6">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+                <div class="flex items-center gap-2 pb-3 border-b border-slate-100 justify-between">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="activity" class="w-5 h-5 text-mecanizar-600"></i>
+                        <h2 class="text-lg font-extrabold text-slate-900">3. Seleção da Ponta de Pulverização & Simulador</h2>
+                    </div>
+                    <div class="bg-slate-100 text-slate-700 px-3 py-1 rounded-lg font-bold text-xs font-mono">
+                        Alvo: <span id="lbl-info-taxa-esp">-- L/ha</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Fabricante</label>
+                        <select id="select-fabricante" onchange="carregarModelosFabricante()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-mecanizar-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1.5">Modelo da Ponta</label>
+                        <select id="select-modelo" onchange="carregarCoresDisponiveis()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-mecanizar-500"></select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-500 mb-3">Tamanho Nominal do Bico (Vazão Padrão ISO)</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-8 gap-2" id="grid-bicos-comerciais"></div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-5 rounded-2xl space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Velocidade Dinâmica Simulada</span>
+                            <span id="slider-vel-display" class="text-2xl font-black text-emerald-400 font-mono">-- km/h</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Tamanho de Gota na Velocidade</span>
+                            <span id="gota-badge-dinamica" class="px-3 py-1.5 rounded-lg text-xs font-black inline-block mt-1">--</span>
+                        </div>
+                    </div>
+                    <input type="range" id="slider-velocidade" min="0" max="100" step="0.1" oninput="atualizarSimulacaoDinamicamente(this.value)" class="w-full accent-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Vazão Atual</span>
+                        <strong id="dinamico-vazao" class="text-xl font-black text-slate-800 font-mono">-- L/min</strong>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Pressão BAR</span>
+                        <strong id="dinamico-bar" class="text-xl font-black text-slate-800 font-mono">-- bar</strong>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Pressão kPa</span>
+                        <strong id="dinamico-kpa" class="text-xl font-black text-slate-800 font-mono">-- kPa</strong>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-center">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Pressão PSI</span>
+                        <strong id="dinamico-psi" class="text-xl font-black text-slate-800 font-mono">-- psi</strong>
+                    </div>
+                </div>
+
+                <div id="alerta-pressao-limite" class="p-4 rounded-xl text-xs font-semibold border flex items-center gap-3 transition"></div>
+
+                <div class="space-y-3">
+                    <div class="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <div class="flex flex-wrap gap-2 items-center justify-center text-[9px] font-bold uppercase text-slate-500">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-[#ef4444]"></span> muito fina (VF)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-[#f97316]"></span> fina (F)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-[#eab308]"></span> média (M)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-[#2563eb]"></span> grossa (C)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-[#7c3aed]"></span> m. grossa (VC)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-[#4b5563]"></span> ex. grossa (XC)</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-[#111827]"></span> ultra grossa (UC)</span>
+                        </div>
+                        <div class="w-full border-t border-slate-200/60 my-1"></div>
+                        <div class="flex flex-wrap gap-4 items-center justify-center text-[10px] font-bold text-slate-600">
+                            <span class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full bg-slate-200 border border-slate-400 flex items-center justify-center text-[9px]">●</span> Gota Tolerada / Operação Ok</span>
+                            <span class="flex items-center gap-1.5"><span class="w-4 h-4 bg-slate-200 border-2 border-yellow-500 flex items-center justify-center text-[8px] text-yellow-600" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);">▲</span> Gota Fora dos Parâmetros Desejados</span>
+                            <span class="flex items-center gap-1.5"><span class="w-4 h-4 bg-slate-200 border-2 border-red-600 flex items-center justify-center text-[8px] text-red-600" style="transform: rotate(45deg);">■</span> Pressão Fora de Bula (Zona Proibida)</span>
+                        </div>
+                    </div>
+                    <div class="h-[280px] w-full relative bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <canvas id="chart-pressao-curva"></canvas>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-slate-100 pt-5">
+                    <button onclick="switchSection('section-vazao', 2)" class="w-full sm:w-auto border border-slate-200 text-slate-600 font-bold text-sm px-6 py-3 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer transition">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar para Vazão
+                    </button>
+                    <button id="btn-avancar-laudo" onclick="irParaLaudoFinal()" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm px-8 py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> <span>Avançar para Relatório</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-relatorio" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm no-print space-y-4 max-w-4xl mx-auto">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">Configuração de Emissão do Laudo Técnico</h2>
+                        <p class="text-xs text-slate-500">Cadastre os dados abaixo para personalizar o relatório executivo.</p>
+                    </div>
+                    <button onclick="switchSection('section-simulacao', 3)" class="border border-slate-200 text-slate-600 font-bold text-xs px-4 py-2 rounded-xl cursor-pointer hover:bg-slate-50 transition">⬅ Voltar ao Simulador</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <input type="text" id="form-inp-fazenda" oninput="sincronizarLaudoTextos()" placeholder="Propriedade / Fazenda" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mecanizar-500/40">
+                    <input type="text" id="form-inp-local" oninput="sincronizarLaudoTextos()" placeholder="Município - UF" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mecanizar-500/40">
+                    <input type="text" id="form-inp-tecnico" oninput="sincronizarLaudoTextos()" placeholder="Responsável Técnico" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mecanizar-500/40">
+                    <input type="text" id="form-inp-maquina" oninput="sincronizarLaudoTextos()" placeholder="Identificação da Máquina" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mecanizar-500/40">
+                </div>
+                <div class="flex justify-between pt-2">
+                    <button onclick="reiniciarTudo()" class="text-red-600 font-bold text-xs px-4 py-2 rounded-xl hover:bg-red-50 cursor-pointer">Resetar Tudo</button>
+                    <button onclick="window.print()" class="bg-mecanizar-600 hover:bg-mecanizar-500 text-white font-bold text-xs px-6 py-3 rounded-xl shadow-sm flex items-center gap-2 cursor-pointer transition">
+                        <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Laudo Técnico (A4 PDF)
+                    </button>
+                </div>
+            </div>
+
+            <div id="laudo-imprimivel" class="laudo-container laudo-desktop-view print-full-width border border-slate-200 rounded-3xl p-10 shadow-sm flex flex-col gap-4 bg-white">
+                <div class="flex items-center justify-between border-b-2 border-slate-900 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white font-bold">M</div>
+                        <div>
+                            <h1 class="text-lg font-black text-slate-900 tracking-tight">MECANIZAR PRO</h1>
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Laudo de Engenharia Agrícola e Qualidade de Gotas</p>
+                        </div>
+                    </div>
+                    <div class="text-right font-mono text-xs text-slate-600" id="laudo-data-emissao">--/--/----</div>
+                </div>
+
+                <div id="laudo-status-tarja" class="p-3 rounded-xl text-center text-xs font-black uppercase tracking-wider">
+                    STATUS DO LAUDO: <span id="laudo-status-texto">--</span>
+                </div>
+
+                <div class="grid grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl text-xs border border-slate-200 font-medium">
+                    <div><span class="text-slate-400 block font-bold text-[9px] uppercase">Fazenda:</span><strong id="lbl-laudo-fazenda" class="text-slate-900">Não Informado</strong></div>
+                    <div><span class="text-slate-400 block font-bold text-[9px] uppercase">Localização:</span><strong id="lbl-laudo-local" class="text-slate-900">Não Informado</strong></div>
+                    <div><span class="text-slate-400 block font-bold text-[9px] uppercase">Equipamento:</span><strong id="lbl-laudo-maquina" class="text-slate-900">Não Informado</strong></div>
+                    <div><span class="text-slate-400 block font-bold text-[9px] uppercase">Espaçamento:</span><strong id="lbl-laudo-esp" class="text-slate-900">-- m</strong></div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-4 bg-slate-900 p-4 rounded-xl text-xs text-slate-300">
+                    <div><span class="text-slate-400 block font-bold text-[9px] uppercase">Volume Alvo:</span><strong id="laudo-txt-taxa" class="text-white text-sm font-black">-- L/ha</strong></div>
+                    <div><span class="text-slate-400 block font-bold text-[9px] uppercase">Ponta Analisada:</span><strong id="laudo-txt-ponta" class="text-white text-sm font-black">--</strong></div>
+                    <div><span class="text-slate-400 block font-bold text-[9px] uppercase">Pressão Requerida:</span><strong id="laudo-txt-pressao-range" class="text-white text-sm font-black">-- bar</strong></div>
+                    <div><span class="text-slate-400 block font-bold text-[9px] uppercase">Velocidades de Trabalho:</span><strong id="laudo-txt-vel-range" class="text-white text-sm font-black">-- km/h</strong></div>
+                </div>
+
+                <div class="space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Espectro de Gotas x Velocidades Simuladas</span>
+                    <div class="flex gap-2 items-center text-[8px] font-bold uppercase text-slate-500 bg-slate-50 p-1.5 rounded-lg border border-slate-100 justify-center">
+                        <span class="flex items-center gap-0.5"><span class="w-2 h-2 rounded-full bg-[#ef4444]"></span> VF</span>
+                        <span class="flex items-center gap-0.5"><span class="w-2 h-2 rounded-full bg-[#f97316]"></span> F</span>
+                        <span class="flex items-center gap-0.5"><span class="w-2 h-2 rounded-full bg-[#eab308]"></span> M</span>
+                        <span class="flex items-center gap-0.5"><span class="w-2 h-2 rounded-full bg-[#2563eb]"></span> C</span>
+                        <span class="flex items-center gap-0.5"><span class="w-2 h-2 rounded-full bg-[#7c3aed]"></span> VC</span>
+                        <span class="flex items-center gap-0.5"><span class="w-2 h-2 rounded-full bg-[#4b5563]"></span> XC</span>
+                        <span class="flex items-center gap-0.5"><span class="w-2 h-2 rounded-full bg-[#111827]"></span> UC</span>
+                        <span class="flex items-center gap-0.5"><span class="w-2 h-2 border border-dashed border-red-500"></span> FORA DA BULA</span>
+                    </div>
+                    <div class="chart-print-block h-[230px] w-full border border-slate-200 rounded-xl p-1 bg-slate-50">
+                        <canvas id="chart-laudo-print"></canvas>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 items-end">
+                    <div>
+                        <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Diagnóstico Geral e Parecer Técnico</h4>
+                        <p id="laudo-parecer-tecnico" class="text-[11px] text-slate-700 leading-relaxed font-medium">Análise Hidráulica...</p>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="w-full max-w-[200px] border-b border-slate-400"></div>
+                        <span id="lbl-laudo-rt" class="text-[10px] text-slate-500 font-bold mt-2 uppercase tracking-wide">Responsável Técnico</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // BANCO DE DADOS DE CONFIGURAÇÃO DE BULA E PONTAS
+        const DATABASE_PONTAS = {
+            "TeeJet": [
+                { modelo: "XR / XRC TeeJet (Uso Geral - 110°)", angulo: 110, pMin: 1.0, pMax: 4.0, gotas: { 1.0: "M", 2.0: "F", 3.0: "F", 4.0: "VF" }, vazores3bar: { "01": 0.40, "015": 0.60, "02": 0.80, "03": 1.20, "04": 1.60, "05": 2.00, "06": 2.40, "08": 3.20 } },
+                { modelo: "AIXR TeeJet (Indução de Ar - 110°)", angulo: 110, pMin: 1.5, pMax: 6.0, gotas: { 1.5: "VC", 2.5: "C", 4.0: "M", 6.0: "M" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00, "06": 2.40 } },
+                { modelo: "TT Turbo TeeJet (Grande Ângulo - 110°)", angulo: 110, pMin: 1.0, pMax: 6.0, gotas: { 1.0: "VC", 2.0: "C", 4.0: "M", 6.0: "F" }, vazores3bar: { "01": 0.40, "015": 0.60, "02": 0.80, "03": 1.20, "04": 1.60, "05": 2.00, "06": 2.40, "08": 3.20 } },
+                { modelo: "TTI Turbo TeeJet Indução (Mínimo Deriva - 110°)", angulo: 110, pMin: 1.5, pMax: 7.0, gotas: { 1.5: "UC", 3.0: "XC", 5.0: "VC", 7.0: "C" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00, "06": 2.40 } },
+                { modelo: "AITTJ60 Jato Duplo com Indução (Penetração - 110°)", angulo: 110, pMin: 2.0, pMax: 6.0, gotas: { 2.0: "XC", 3.0: "VC", 4.5: "C", 6.0: "M" }, vazores3bar: { "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00, "06": 2.40 } },
+                { modelo: "TXR Cone Jet (Inseticidas/Fungicidas - 80°)", angulo: 80, pMin: 2.0, pMax: 10.0, gotas: { 2.0: "F", 4.0: "VF", 8.0: "VF" }, vazores3bar: { "0075": 0.30, "01": 0.40, "015": 0.60, "02": 0.80, "03": 1.20 } }
+            ],
+            "Jacto": [
+                { modelo: "AXI Universal (Cerâmica Alumina - 110°)", angulo: 110, pMin: 1.5, pMax: 4.5, gotas: { 1.5: "M", 2.5: "F", 3.5: "F", 4.5: "VF" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00 } },
+                { modelo: "JAI Indução de Ar (Sistema Venturi - 110°)", angulo: 110, pMin: 2.0, pMax: 7.0, gotas: { 2.0: "XC", 3.5: "VC", 5.0: "C", 7.0: "M" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00 } },
+                { modelo: "JTT Turbo Leque (Padrão Otimizado - 110°)", angulo: 110, pMin: 1.0, pMax: 4.0, gotas: { 1.0: "C", 2.0: "M", 3.5: "F", 4.0: "VF" }, vazores3bar: { "015": 0.60, "02": 0.80, "03": 1.20, "04": 1.60 } },
+                { modelo: "J3D Inclinado 3D (Cobertura Verticais - 100°)", angulo: 100, pMin: 1.5, pMax: 5.0, gotas: { 1.5: "C", 2.5: "M", 4.0: "F", 5.0: "F" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00 } },
+                { modelo: "JA Cone Vazio (Alta Cobertura Copa - 80°)", angulo: 80, pMin: 3.0, pMax: 10.0, gotas: { 3.0: "F", 5.0: "VF", 10.0: "VF" }, vazores3bar: { "005": 0.20, "01": 0.40, "015": 0.60, "02": 0.80, "03": 1.20 } }
+            ],
+            "MagnoJet": [
+                { modelo: "MGA Leque Cerâmico (Série Universal - 110°)", angulo: 110, pMin: 2.0, pMax: 4.5, gotas: { 2.0: "M", 3.0: "F", 4.0: "F", 4.5: "VF" }, vazores3bar: { "01": 0.40, "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00, "06": 2.40 } },
+                { modelo: "APM Baixa Deriva (Pré-Orifício - 110°)", angulo: 110, pMin: 2.0, pMax: 5.5, gotas: { 2.0: "VC", 3.5: "C", 4.5: "C", 5.5: "M" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00 } },
+                { modelo: "MAG-IA Indução de Ar (Alta Estabilidade - 110°)", angulo: 110, pMin: 2.5, pMax: 7.0, gotas: { 2.5: "XC", 4.0: "VC", 5.5: "C", 7.0: "C" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00, "06": 2.40 } },
+                { modelo: "MGA-D Série Reduzida (Culturas em Linha - 80°)", angulo: 80, pMin: 2.0, pMax: 5.0, gotas: { 2.0: "C", 3.0: "M", 4.0: "M", 5.0: "F" }, vazores3bar: { "015": 0.60, "02": 0.80, "03": 1.20, "04": 1.60, "05": 2.00 } }
+            ],
+            "Hypro": [
+                { modelo: "Guardian (Leque Frontal Otimizado - 110°)", angulo: 110, pMin: 1.5, pMax: 5.0, gotas: { 1.5: "M", 2.5: "F", 4.0: "F", 5.0: "VF" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00 } },
+                { modelo: "Ultra Lo-Drift ULD (Redução de Névoa - 110°)", angulo: 110, pMin: 2.0, pMax: 6.0, gotas: { 2.0: "XC", 3.5: "VC", 5.0: "C", 6.0: "C" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00, "06": 2.40 } },
+                { modelo: "Hypro 3D (Design Aerodinâmico - 100°)", angulo: 100, pMin: 1.0, pMax: 4.5, gotas: { 1.0: "C", 2.0: "M", 3.5: "F", 4.5: "F" }, vazores3bar: { "015": 0.60, "02": 0.80, "025": 1.00, "03": 1.20, "04": 1.60, "05": 2.00 } }
+            ]
+        };
+
+        const MACORES_ISO = {
+            "005": { cor: "Cinza Claro", hex: "#cbd5e1", txt: "#000" }, "0075": { cor: "Rosa", hex: "#f472b6", txt: "#fff" },
+            "01": { cor: "Laranja", hex: "#ff7f00", txt: "#fff" }, "015": { cor: "Verde", hex: "#16a34a", txt: "#fff" },
+            "02": { cor: "Amarelo", hex: "#eab308", txt: "#000" }, "025": { cor: "Lilás", hex: "#c084fc", txt: "#000" },
+            "03": { cor: "Azul", hex: "#2563eb", txt: "#fff" }, "04": { cor: "Vermelho", hex: "#dc2626", txt: "#fff" },
+            "05": { cor: "Marrom", hex: "#78350f", txt: "#fff" }, "06": { cor: "Cinza", hex: "#4b5563", txt: "#fff" },
+            "08": { cor: "Branco", hex: "#ffffff", txt: "#000" }
+        };
+
+        const CLASSES_GOTA_CONFIG = {
+            "VF": { nome: "Muito Fina", hex: "#ef4444" },
+            "F":  { nome: "Fina", hex: "#f97316" },
+            "M":  { nome: "Média", hex: "#eab308" },
+            "C":  { nome: "Grossa", hex: "#2563eb" },
+            "VC": { nome: "Muito Grossa", hex: "#7c3aed" },
+            "XC": { nome: "Extr. Grossa", hex: "#4b5563" },
+            "UC": { nome: "Ultra Grossa", hex: "#111827" }
+        };
+
+        // Estado Global da Aplicação
+        let state = {
+            taxa: 100, velMin: 8.0, velMax: 14.0, espacamento: 0.50,
+            gotasToleradas: ["M", "C", "VC"], 
+            modeloObj: null, tamanhoSelecionado: "", nominal3bar: 0, velocidadeAtual: 11.0,
+            pressaoMinCalculada: 0, pressaoMaxCalculada: 0, 
+            vazaoMinReq: 0, vazaoMaxReq: 0,
+            reprovado: false, erroMotivo: ""
+        };
+
+        let chartAnaliseInstance = null;
+        let chartPrintInstance = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            construirInterfaceGotas();
+            popularFabricantes();
+        });
+
+        // TELA 1: Inicializa checkboxes dinâmicos de tolerância de gotas
+        function construirInterfaceGotas() {
+            const container = document.getElementById("gotas-toleradas-container");
+            container.innerHTML = "";
+            Object.keys(CLASSES_GOTA_CONFIG).forEach(sigla => {
+                const conf = CLASSES_GOTA_CONFIG[sigla];
+                const active = state.gotasToleradas.includes(sigla);
+                
+                const div = document.createElement("div");
+                div.id = `chk-gota-${sigla}`;
+                div.className = `p-3 rounded-xl border text-center font-bold text-xs cursor-pointer flex items-center justify-between select-none transition ${active ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`;
+                div.onclick = () => alternarGotaTolerada(sigla);
+                div.innerHTML = `
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full" style="background-color: ${conf.hex}"></span>
+                        ${sigla} - ${conf.nome}
+                    </span>
+                    <i data-lucide="${active ? 'check-circle' : 'circle'}" class="w-4 h-4 ${active ? 'text-emerald-400' : 'text-slate-300'}"></i>
+                `;
+                container.appendChild(div);
+            });
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function alternarGotaTolerada(sigla) {
+            if (state.gotasToleradas.includes(sigla)) {
+                if (state.gotasToleradas.length > 1) {
+                    state.gotasToleradas = state.gotasToleradas.filter(g => g !== sigla);
+                }
+            } else {
+                state.gotasToleradas.push(sigla);
+            }
+            construirInterfaceGotas();
+        }
+
+        // Navegação principal do Stepper
+        function switchSection(id, stepNumber) {
+            ['section-config', 'section-vazao', 'section-simulacao', 'section-relatorio'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+
+            for (let i = 1; i <= 4; i++) {
+                const btn = document.getElementById(`step-btn-${i}`);
+                const line = document.getElementById(`line-step-${i}`);
+                if (i <= stepNumber) {
+                    btn.className = "flex items-center gap-2 font-bold text-xs text-mecanizar-600";
+                    btn.querySelector("span").className = "w-6 h-6 rounded-full bg-mecanizar-100 flex items-center justify-center border border-mecanizar-500 text-mecanizar-600";
+                } else {
+                    btn.className = "flex items-center gap-2 font-semibold text-xs text-slate-400";
+                    btn.querySelector("span").className = "w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400";
+                }
+                if (line) {
+                    line.className = `w-12 h-[2px] ${i < stepNumber ? 'bg-mecanizar-500' : 'bg-slate-200'}`;
+                }
+            }
+        }
+
+        // TELA 1 -> TELA 2: Calcula vazões requeridas
+        function avancarParaVazao(e) {
+            if (e) e.preventDefault();
+            state.taxa = parseFloat(document.getElementById('input-taxa').value) || 100;
+            state.espacamento = parseFloat(document.getElementById('input-espacamento').value) || 0.50;
+            state.velMin = parseFloat(document.getElementById('input-vel-min').value) || 8.0;
+            state.velMax = parseFloat(document.getElementById('input-vel-max').value) || 14.0;
+
+            if (state.velMin >= state.velMax) {
+                alert("A velocidade mínima deve ser menor que a velocidade máxima de operação.");
+                return;
+            }
+
+            // Equação Técnica: Q (L/min) = (Taxa * Vel * Espacamento) / 600
+            state.vazaoMinReq = (state.taxa * state.velMin * state.espacamento) / 600;
+            state.vazaoMaxReq = (state.taxa * state.velMax * state.espacamento) / 600;
+
+            document.getElementById('vazao-req-min').textContent = `${state.vazaoMinReq.toFixed(3)} L/min`;
+            document.getElementById('vazao-req-max').textContent = `${state.vazaoMaxReq.toFixed(3)} L/min`;
+            document.getElementById('vazao-req-lbl-min').textContent = state.velMin.toFixed(1);
+            document.getElementById('vazao-req-lbl-max').textContent = state.velMax.toFixed(1);
+
+            // Resumo de Gotas
+            const resumoCont = document.getElementById('resumo-gotas-selecionadas');
+            resumoCont.innerHTML = "";
+            state.gotasToleradas.forEach(g => {
+                const badge = document.createElement("span");
+                badge.className = "px-2.5 py-1 text-xs font-bold rounded-lg text-white";
+                badge.style.backgroundColor = CLASSES_GOTA_CONFIG[g]?.hex || '#64748b';
+                badge.textContent = `${g} - ${CLASSES_GOTA_CONFIG[g]?.nome}`;
+                resumoCont.appendChild(badge);
+            });
+
+            switchSection('section-vazao', 2);
+        }
+
+        // TELA 2 -> TELA 3: Carrega a interface do simulador de bico
+        function avancarParaSimulador() {
+            document.getElementById('lbl-info-taxa-esp').textContent = `${state.taxa} L/ha @ ${state.espacamento.toFixed(2)}m`;
+            
+            const slider = document.getElementById('slider-velocidade');
+            slider.min = state.velMin;
+            slider.max = state.velMax;
+            slider.value = ((state.velMin + state.velMax) / 2).toFixed(1);
+            state.velocidadeAtual = parseFloat(slider.value);
+            
+            document.getElementById('slider-vel-display').textContent = `${state.velocidadeAtual.toFixed(1)} km/h`;
+
+            switchSection('section-simulacao', 3);
+            popularFabricantes();
+        }
+
+        function popularFabricantes() {
+            const sel = document.getElementById("select-fabricante");
+            sel.innerHTML = "";
+            Object.keys(DATABASE_PONTAS).forEach(fab => {
+                const opt = document.createElement("option");
+                opt.value = fab;
+                opt.textContent = fab;
+                sel.appendChild(opt);
+            });
+            carregarModelosFabricante();
+        }
+
+        function carregarModelosFabricante() {
+            const fab = document.getElementById("select-fabricante").value;
+            const selMod = document.getElementById("select-modelo");
+            selMod.innerHTML = "";
+            DATABASE_PONTAS[fab].forEach((m, idx) => {
+                const opt = document.createElement("option");
+                opt.value = idx;
+                opt.textContent = m.modelo;
+                selMod.appendChild(opt);
+            });
+            carregarCoresDisponiveis();
+        }
+
+        function carregarCoresDisponiveis() {
+            const fab = document.getElementById("select-fabricante").value;
+            const idx = document.getElementById("select-modelo").value;
+            state.modeloObj = DATABASE_PONTAS[fab][idx];
+
+            const grid = document.getElementById("grid-bicos-comerciais");
+            grid.innerHTML = "";
+
+            let primeiroTamanho = "";
+            Object.keys(state.modeloObj.vazores3bar).forEach((tam, k) => {
+                if (k === 0) primeiroTamanho = tam;
+                const infoCor = MACORES_ISO[tam] || { cor: "Custom", hex: "#64748b", txt: "#fff" };
+                const btn = document.createElement("button");
+                btn.id = `btn-comercial-${tam}`;
+                btn.className = "p-2 rounded-xl font-extrabold text-xs border shadow-sm text-center cursor-pointer transition active:scale-95";
+                btn.style.backgroundColor = infoCor.hex;
+                btn.style.color = infoCor.txt;
+                btn.style.borderColor = "transparent";
+                btn.innerHTML = `<div>ISO ${tam}</div><div class="text-[9px] opacity-80 font-semibold">${infoCor.cor}</div>`;
+                btn.onclick = () => selecionarTamanhoPonta(tam);
+                grid.appendChild(btn);
+            });
+
+            selecionarTamanhoPonta(primeiroTamanho);
+        }
+
+        function selecionarTamanhoPonta(tam) {
+            state.tamanhoSelecionado = tam;
+            state.nominal3bar = state.modeloObj.vazores3bar[tam];
+            
+            Object.keys(state.modeloObj.vazores3bar).forEach(t => {
+                const b = document.getElementById(`btn-comercial-${t}`);
+                if (b) {
+                    if (t === tam) {
+                        b.classList.add("ring-4", "ring-slate-900/60");
+                    } else {
+                        b.classList.remove("ring-4", "ring-slate-900/60");
+                    }
+                }
+            });
+            atualizarCalculosDinamicos();
+        }
+
+        function atualizarSimulacaoDinamicamente(val) {
+            state.velocidadeAtual = parseFloat(val);
+            document.getElementById('slider-vel-display').textContent = `${state.velocidadeAtual.toFixed(1)} km/h`;
+            atualizarCalculosDinamicos();
+        }
+
+        // Retorna o tamanho de gota conforme pressão interpolada na bula
+        function obterSiglaGota(pressao, gotasConfig) {
+            const chaves = Object.keys(gotasConfig).map(Number).sort((a,b)=>a-b);
+            let classGota = "M"; 
+            for (let i = 0; i < chaves.length; i++) {
+                if (pressao >= chaves[i]) {
+                    classGota = gotasConfig[chaves[i]];
+                }
+            }
+            return classGota;
+        }
+
+        function atualizarCalculosDinamicos() {
+            if (!state.modeloObj || !state.nominal3bar) return;
+
+            // Vazão Instantânea no Slider
+            const vazaoInstantanea = (state.taxa * state.velocidadeAtual * state.espacamento) / 600;
+            // Pressão: P2 = P1 * (Q2 / Q1)^2 [P1 = 3bar, Q1 = nominal3bar]
+            const pressaoBar = 3.0 * Math.pow((vazaoInstantanea / state.nominal3bar), 2);
+
+            // Pressões Limites para as faixas estritas de velocidade de trabalho
+            state.pressaoMinCalculada = 3.0 * Math.pow((state.vazaoMinReq / state.nominal3bar), 2);
+            state.pressaoMaxCalculada = 3.0 * Math.pow((state.vazaoMaxReq / state.nominal3bar), 2);
+
+            // Telemetria dinâmica
+            document.getElementById('dinamico-vazao').textContent = `${vazaoInstantanea.toFixed(3)} L/min`;
+            document.getElementById('dinamico-bar').textContent = `${pressaoBar.toFixed(2)} bar`;
+            document.getElementById('dinamico-kpa').textContent = `${(pressaoBar * 100).toFixed(0)} kPa`;
+            document.getElementById('dinamico-psi').textContent = `${(pressaoBar * 14.5038).toFixed(1)} psi`;
+
+            const siglaGota = obterSiglaGota(pressaoBar, state.modeloObj.gotas);
+            const confGota = CLASSES_GOTA_CONFIG[siglaGota] || { nome: "N/A", hex: "#64748b" };
+            
+            const badge = document.getElementById('gota-badge-dinamica');
+            badge.textContent = `${siglaGota} - ${confGota.nome}`;
+            badge.style.backgroundColor = confGota.hex;
+
+            // Validação e Gráficos
+            analisarSegurancaOperacional();
+            construirGraficosComplexos();
+        }
+
+        // Validação estrita do bico e espectro de gota
+        function analisarSegurancaOperacional() {
+            const alerta = document.getElementById('alerta-pressao-limite');
+            state.reprovado = false;
+            state.erroMotivo = "";
+
+            // 1. Validar Pressão versus Limites do Catálogo
+            const foraLimiteMin = state.pressaoMinCalculada < state.modeloObj.pMin;
+            const foraLimiteMax = state.pressaoMaxCalculada > state.modeloObj.pMax;
+
+            // 2. Validar Espectro de Gotas ao longo de toda a rampa de velocidade
+            let espectroInvalido = false;
+            let gotasForaDoEspectro = new Set();
+
+            const divisores = 15;
+            const delta = (state.velMax - state.velMin) / divisores;
+            for (let i = 0; i <= divisores; i++) {
+                const v = state.velMin + (i * delta);
+                const q = (state.taxa * v * state.espacamento) / 600;
+                const p = 3.0 * Math.pow((q / state.nominal3bar), 2);
+                const g = obterSiglaGota(p, state.modeloObj.gotas);
+                if (!state.gotasToleradas.includes(g)) {
+                    espectroInvalido = true;
+                    gotasForaDoEspectro.add(g);
+                }
+            }
+
+            if (foraLimiteMin || foraLimiteMax) {
+                state.reprovado = true;
+                state.erroMotivo = `A velocidade programada exige pressões de ${state.pressaoMinCalculada.toFixed(1)} a ${state.pressaoMaxCalculada.toFixed(1)} bar, saindo da bula recomendada (${state.modeloObj.pMin} a ${state.modeloObj.pMax} bar).`;
+                
+                alerta.className = "p-4 rounded-xl text-xs font-bold bg-red-50 border border-red-300 text-red-900 flex items-center gap-2";
+                alerta.innerHTML = `<i data-lucide='alert-octagon' class='w-4 h-4 text-red-600 shrink-0'></i> REPROVADO: Pressão de trabalho fora dos limites autorizados do bico.`;
+            } else if (espectroInvalido) {
+                state.reprovado = true;
+                const gotasLista = Array.from(gotasForaDoEspectro).join(', ');
+                state.erroMotivo = `O bico produz gotas do tamanho (${gotasLista}) na rampa de velocidade, colidindo com as gotas toleráveis selecionadas.`;
+                
+                alerta.className = "p-4 rounded-xl text-xs font-bold bg-amber-50 border border-amber-300 text-amber-900 flex items-center gap-2";
+                alerta.innerHTML = `<i data-lucide='alert-triangle' class='w-4 h-4 text-amber-600 shrink-0'></i> REPROVADO: Risco de deriva ou perda por gota fora dos limites aceitáveis (${gotasLista}).`;
+            } else {
+                alerta.className = "p-4 rounded-xl text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2";
+                alerta.innerHTML = `<i data-lucide='check-circle' class='w-4 h-4 text-emerald-600 shrink-0'></i> APROVADO: Nozzle opera dentro da bula e do espectro de gota projetado.`;
+            }
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        // Configuração dos Arrays do Gráfico
+        function construirGraficosComplexos() {
+            const labels = [];
+            const pontos = [];
+            const pointsStyle = [];
+            const pointsRadius = [];
+            const pointsBorderColor = [];
+            const pointsBorderWidth = [];
+            const pointsBgColor = [];
+
+            const divisores = 15;
+            const delta = (state.velMax - state.velMin) / divisores;
+
+            for (let i = 0; i <= divisores; i++) {
+                const v = state.velMin + (i * delta);
+                labels.push(`${v.toFixed(1)} km/h`);
+                
+                const q = (state.taxa * v * state.espacamento) / 600;
+                const p = 3.0 * Math.pow((q / state.nominal3bar), 2);
+                pontos.push(p);
+
+                const sigla = obterSiglaGota(p, state.modeloObj.gotas);
+                const corGota = CLASSES_GOTA_CONFIG[sigla]?.hex || '#64748b';
+                
+                const isTolerated = state.gotasToleradas.includes(sigla);
+                const isOutOfBula = (p < state.modeloObj.pMin || p > state.modeloObj.pMax);
+                
+                pointsBgColor.push(corGota);
+                
+                if (isOutOfBula) {
+                    pointsStyle.push('rectRot'); // Losango Vermelho (Fora de Bula)
+                    pointsRadius.push(9);
+                    pointsBorderColor.push('#ef4444'); 
+                    pointsBorderWidth.push(3.5);
+                } else if (!isTolerated) {
+                    pointsStyle.push('triangle'); // Triângulo Amarelo (Gota Indesejada)
+                    pointsRadius.push(9);
+                    pointsBorderColor.push('#f59e0b'); 
+                    pointsBorderWidth.push(3.5);
+                } else {
+                    pointsStyle.push('circle'); // Círculo Branco (Normal)
+                    pointsRadius.push(6);
+                    pointsBorderColor.push('#ffffff');
+                    pointsBorderWidth.push(1.5);
+                }
+            }
+
+            renderizarLinhaGrafico('chart-pressao-curva', labels, pontos, pointsBgColor, pointsStyle, pointsRadius, pointsBorderColor, pointsBorderWidth, false);
+            renderizarLinhaGrafico('chart-laudo-print', labels, pontos, pointsBgColor, pointsStyle, pointsRadius, pointsBorderColor, pointsBorderWidth, true);
+        }
+
+        function renderizarLinhaGrafico(id, labels, dados, pointsBgColor, pointsStyle, pointsRadius, pointsBorderColor, pointsBorderWidth, isPrint) {
+            const canvas = document.getElementById(id);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            if (!isPrint && chartAnaliseInstance) chartAnaliseInstance.destroy();
+            if (isPrint && chartPrintInstance) chartPrintInstance.destroy();
+
+            const maxPressaoEixo = Math.max(Math.max(...dados) * 1.15, state.modeloObj.pMax * 1.1);
+
+            const config = {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dados,
+                        borderWidth: 4,
+                        pointStyle: pointsStyle,
+                        pointRadius: pointsRadius,
+                        pointBackgroundColor: pointsBgColor,
+                        pointBorderColor: pointsBorderColor,
+                        pointBorderWidth: pointsBorderWidth,
+                        segment: {
+                            borderColor: ctx => {
+                                const pMedia = (ctx.p0.parsed.y + ctx.p1.parsed.y) / 2;
+                                const sigla = obterSiglaGota(pMedia, state.modeloObj.gotas);
+                                const foraBula = (pMedia < state.modeloObj.pMin || pMedia > state.modeloObj.pMax);
+                                const gotaNaoTolerada = !state.gotasToleradas.includes(sigla);
+                                
+                                if (foraBula) return '#dc2626'; // Fora de Bula -> Linha Vermelha
+                                if (gotaNaoTolerada) return '#f59e0b'; // Gota Indesejada -> Linha Âmbar
+                                return CLASSES_GOTA_CONFIG[sigla]?.hex || '#0f172a';
+                            },
+                            borderDash: ctx => {
+                                const pMedia = (ctx.p0.parsed.y + ctx.p1.parsed.y) / 2;
+                                const sigla = obterSiglaGota(pMedia, state.modeloObj.gotas);
+                                const foraBula = (pMedia < state.modeloObj.pMin || pMedia > state.modeloObj.pMax);
+                                const gotaNaoTolerada = !state.gotasToleradas.includes(sigla);
+                                // Aplica tracejado caso esteja fora do planejado ou fora de bula
+                                return (foraBula || gotaNaoTolerada) ? [5, 5] : [];
+                            }
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            min: 0, 
+                            max: maxPressaoEixo,
+                            title: { display: true, text: 'Pressão (bar)', font: { size: 10, weight: 'bold' } }
+                        }
+                    }
+                }
+            };
+
+            const chartObj = new Chart(ctx, config);
+            if (isPrint) chartPrintInstance = chartObj; else chartAnaliseInstance = chartObj;
+        }
+
+        // TELA 4: GERAÇÃO E ESTRUTURA DO LAUDO (PRONTO PARA IMPRESSÃO A4)
+        function irParaLaudoFinal() {
+            const fab = document.getElementById("select-fabricante").value;
+
+            document.getElementById('laudo-txt-taxa').textContent = `${state.taxa} L/ha`;
+            document.getElementById('laudo-txt-ponta').textContent = `${fab} - ${state.modeloObj.modelo.split(" (")[0]} (ISO ${state.tamanhoSelecionado})`;
+            document.getElementById('laudo-txt-pressao-range').textContent = `${state.pressaoMinCalculada.toFixed(1)} a ${state.pressaoMaxCalculada.toFixed(1)} bar`;
+            document.getElementById('laudo-txt-vel-range').textContent = `${state.velMin.toFixed(1)} a ${state.velMax.toFixed(1)} km/h`;
+            document.getElementById('lbl-laudo-esp').textContent = `${state.espacamento.toFixed(2)} m`;
+            document.getElementById('laudo-data-emissao').textContent = new Date().toLocaleDateString('pt-BR');
+
+            const tarja = document.getElementById('laudo-status-tarja');
+            const textoStatus = document.getElementById('laudo-status-texto');
+
+            if (state.reprovado) {
+                tarja.className = "p-3 rounded-xl text-center text-xs font-black bg-red-600 text-white shadow-inner";
+                textoStatus.textContent = "REPROVADO / AJUSTE OBRIGATÓRIO REQUERIDO";
+                document.getElementById('laudo-parecer-tecnico').innerHTML = `
+                    <strong>PARECER INSTRUTIVO:</strong> O cruzamento hidráulico foi analisado de ponta a ponta e o conjunto foi <strong>REPROVADO</strong> para esta operação.
+                    <br><br>
+                    <strong>Motivo da Inconformidade:</strong> ${state.erroMotivo}
+                    <br><br>
+                    <strong>Ação Recomendada:</strong> Substitua a calota do bico (tamanho nominal) ou ajuste o espectro de gotas toleráveis na tela 1 para garantir a qualidade de deposição agronômica.
+                `;
+            } else {
+                tarja.className = "p-3 rounded-xl text-center text-xs font-black bg-emerald-600 text-white shadow-inner";
+                textoStatus.textContent = "APROVADO CONFORME AS NORMAS AGRONÔMICAS";
+                document.getElementById('laudo-parecer-tecnico').innerHTML = `
+                    <strong>PARECER DE CONFORMIDADE:</strong> O bico e o espectro de gotas encontram-se <strong>HOMOLOGADOS</strong>. 
+                    Toda a rampa de velocidade foi simulada sem riscos de quebras de bula ou de derivas severas fora do projeto.
+                    <br><br>
+                    <strong>Recomendação de Operação:</strong> Monitore o barramento na lavoura para evitar oscilações verticais bruscas, mantendo uma aplicação homogênea e estável.
+                `;
+            }
+
+            sincronizarLaudoTextos();
+            switchSection('section-relatorio', 4);
+        }
+
+        function sincronizarLaudoTextos() {
+            document.getElementById('lbl-laudo-fazenda').textContent = document.getElementById('form-inp-fazenda').value || 'Não Informado';
+            document.getElementById('lbl-laudo-local').textContent = document.getElementById('form-inp-local').value || 'Não Informado';
+            document.getElementById('lbl-laudo-maquina').textContent = document.getElementById('form-inp-maquina').value || 'Não Informado';
+            document.getElementById('lbl-laudo-rt').textContent = document.getElementById('form-inp-tecnico').value || 'Responsável Técnico';
+        }
+
+        function reiniciarTudo() {
+            if (confirm("Deseja redefinir todo o sistema e voltar para o passo inicial?")) {
+                document.getElementById('form-inp-fazenda').value = "";
+                document.getElementById('form-inp-local').value = "";
+                document.getElementById('form-inp-tecnico').value = "";
+                document.getElementById('form-inp-maquina').value = "";
+                state.gotasToleradas = ["M", "C", "VC"];
+                construirInterfaceGotas();
+                switchSection('section-config', 1);
+            }
+        }
+    </script>
+</body>
+</html>
